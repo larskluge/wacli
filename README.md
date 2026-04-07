@@ -13,8 +13,9 @@ This is a third-party tool that uses the WhatsApp Web protocol via `whatsmeow` a
 
 Core implementation is in place. See `docs/spec.md` for the full design notes.
 
-## Recent updates (0.2.0)
+## Recent updates (0.2.1)
 
+- Fix: resolve WhatsApp server error 405 ("Client outdated") by upgrading `whatsmeow` to a current revision. (#106)
 - Messages: search/list includes display text for reactions, replies, and media types.
 - Send: `wacli send file --filename` to override the display name.
 - Auth: optional `WACLI_DEVICE_LABEL` / `WACLI_DEVICE_PLATFORM` env overrides.

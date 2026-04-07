@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.5.0 - Unreleased
+## 0.2.1 - 2026-04-07
+
+### Fixed
+
+- Sync: resolve WhatsApp server error 405 ("Client outdated") by upgrading `go.mau.fi/whatsmeow` to the latest revision, which embeds a current WhatsApp Web client protocol version. (#106)
 
 ### Changed
 
@@ -10,15 +14,7 @@
 
 - CI: extract a shared setup action and reuse it across CI and release workflows.
 - Release: install arm64 libc headers in release workflow to improve ARM build reliability.
-
-### Docs
-
-- README: update usage/docs for the 0.2.0 release baseline.
-- Changelog: roll unreleased tracking from `0.2.1` to `0.5.0`.
-
-### Chore
-
-- Version: bump CLI version string to `0.5.0` (unreleased).
+- Deps: bump `go.mau.fi/whatsmeow` to `v0.0.0-20260327181659-02ec817e7cf4` (and indirect deps pulled along by `go mod tidy`).
 
 ## 0.2.0 - 2026-01-23
 
