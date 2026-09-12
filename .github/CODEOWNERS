@@ -6,4 +6,5 @@
 /go.sum @openclaw/openclaw-secops
 /.github/actionlint.yaml @openclaw/openclaw-secops
 /.agents/skills/ @openclaw/openclaw-secops
+/skills/ @openclaw/openclaw-secops
 /.crabbox.yaml @openclaw/openclaw-secops
