@@ -22,6 +22,7 @@ func newSendFileCmd(flags *rootFlags) *cobra.Command {
 	var replyTo string
 	var replyToSender string
 	var ptt bool
+	var voice voiceNoteFlags
 	postSendWait := postSendRetryReceiptWait
 
 	cmd := &cobra.Command{
@@ -32,6 +33,11 @@ func newSendFileCmd(flags *rootFlags) *cobra.Command {
 				return fmt.Errorf("--to and --file are required")
 			}
 			mediaAs, err := validateSendFileMediaOptions(mediaAs, ptt)
+			if err != nil {
+				return err
+			}
+			seconds, waveform := voice.given(cmd)
+			voiceMeta, err := parseVoiceNoteMetadata(seconds, waveform, ptt)
 			if err != nil {
 				return err
 			}
@@ -63,6 +69,8 @@ func newSendFileCmd(flags *rootFlags) *cobra.Command {
 					ReplyTo:        replyTo,
 					ReplyToSender:  replyToSender,
 					PTT:            ptt,
+					Seconds:        seconds,
+					Waveform:       waveform,
 					PostSendWaitMS: durationMillis(postSendWait),
 				})
 				if delegated {
@@ -100,11 +108,13 @@ func newSendFileCmd(flags *rootFlags) *cobra.Command {
 					replyTo:       replyTo,
 					replyToSender: replyToSender,
 					ptt:           ptt,
+					voice:         voiceMeta,
 				})
 			})
 			if err != nil {
 				return err
 			}
+			warnVoiceNoteMetadata(os.Stderr, res.voiceWarning)
 			warnSendStoreFailure(os.Stderr, res.id, res.storeWarning)
 
 			waitForPostSendRetryReceipts(ctx, postSendWait)
@@ -132,6 +142,32 @@ func newSendFileCmd(flags *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&replyTo, "reply-to", "", "message ID to quote/reply to")
 	cmd.Flags().StringVar(&replyToSender, "reply-to-sender", "", "sender JID of the quoted message (required for unsynced group replies)")
 	cmd.Flags().BoolVar(&ptt, "ptt", false, "send OGG/Opus audio as a WhatsApp voice note")
+	voice.register(cmd)
 	cmd.Flags().DurationVar(&postSendWait, "post-send-wait", postSendRetryReceiptWait, "keep the connection alive after send so retry receipts can be handled (0 disables)")
 	return cmd
+}
+
+// voiceNoteFlags are a voice note's length and waveform as the caller measured
+// them, so wacli need not probe the file with ffprobe and ffmpeg.
+type voiceNoteFlags struct {
+	seconds  int64
+	waveform []int
+}
+
+func (f *voiceNoteFlags) register(cmd *cobra.Command) {
+	cmd.Flags().Int64Var(&f.seconds, "seconds", 0, "voice note length in whole seconds, as measured by the caller (skips ffprobe)")
+	cmd.Flags().IntSliceVar(&f.waveform, "waveform", nil, "voice note waveform: 64 comma-separated levels 0..100, as measured by the caller (skips ffmpeg)")
+}
+
+// given returns the flags the command was given, nil for one it was not.
+func (f *voiceNoteFlags) given(cmd *cobra.Command) (*int64, []int) {
+	var seconds *int64
+	if cmd.Flags().Changed("seconds") {
+		seconds = &f.seconds
+	}
+	var waveform []int
+	if cmd.Flags().Changed("waveform") {
+		waveform = append([]int{}, f.waveform...)
+	}
+	return seconds, waveform
 }
