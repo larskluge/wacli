@@ -189,6 +189,29 @@ func (q *Queries) DeleteLeftGroupsOlderThan(ctx context.Context, leftAt sql.Null
 	return result.RowsAffected()
 }
 
+const deleteMessageContacts = `-- name: DeleteMessageContacts :exec
+DELETE FROM message_contacts WHERE chat_jid = ? AND msg_id = ?
+`
+
+type DeleteMessageContactsParams struct {
+	ChatJid string
+	MsgID   string
+}
+
+func (q *Queries) DeleteMessageContacts(ctx context.Context, arg DeleteMessageContactsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteMessageContacts, arg.ChatJid, arg.MsgID)
+	return err
+}
+
+const deleteMessageContactsForChat = `-- name: DeleteMessageContactsForChat :exec
+DELETE FROM message_contacts WHERE chat_jid = ?
+`
+
+func (q *Queries) DeleteMessageContactsForChat(ctx context.Context, chatJid string) error {
+	_, err := q.db.ExecContext(ctx, deleteMessageContactsForChat, chatJid)
+	return err
+}
+
 const deleteMessageLocation = `-- name: DeleteMessageLocation :exec
 DELETE FROM message_locations WHERE chat_jid = ? AND msg_id = ?
 `
@@ -721,6 +744,37 @@ func (q *Queries) InsertGroupParticipant(ctx context.Context, arg InsertGroupPar
 	return err
 }
 
+const insertMessageContact = `-- name: InsertMessageContact :exec
+INSERT INTO message_contacts (chat_jid, msg_id, position, display_name, vcard)
+SELECT ?, ?, ?, ?, ?
+WHERE NOT EXISTS (
+    SELECT 1 FROM message_payload_purges p WHERE p.chat_jid = ? AND p.msg_id = ?
+)
+`
+
+type InsertMessageContactParams struct {
+	ChatJid     string
+	MsgID       string
+	Position    int64
+	DisplayName sql.NullString
+	Vcard       sql.NullString
+	ChatJid_2   string
+	MsgID_2     string
+}
+
+func (q *Queries) InsertMessageContact(ctx context.Context, arg InsertMessageContactParams) error {
+	_, err := q.db.ExecContext(ctx, insertMessageContact,
+		arg.ChatJid,
+		arg.MsgID,
+		arg.Position,
+		arg.DisplayName,
+		arg.Vcard,
+		arg.ChatJid_2,
+		arg.MsgID_2,
+	)
+	return err
+}
+
 const listContacts = `-- name: ListContacts :many
 SELECT c.jid,
        COALESCE(c.phone,'') AS phone,
@@ -883,6 +937,47 @@ func (q *Queries) ListLeftGroups(ctx context.Context) ([]ListLeftGroupsRow, erro
 			&i.LeftAt,
 			&i.UpdatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMessageContacts = `-- name: ListMessageContacts :many
+SELECT position, COALESCE(display_name,''), COALESCE(vcard,'')
+FROM message_contacts
+WHERE chat_jid = ? AND msg_id = ?
+ORDER BY position
+`
+
+type ListMessageContactsParams struct {
+	ChatJid string
+	MsgID   string
+}
+
+type ListMessageContactsRow struct {
+	Position    int64
+	DisplayName string
+	Vcard       string
+}
+
+func (q *Queries) ListMessageContacts(ctx context.Context, arg ListMessageContactsParams) ([]ListMessageContactsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMessageContacts, arg.ChatJid, arg.MsgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMessageContactsRow
+	for rows.Next() {
+		var i ListMessageContactsRow
+		if err := rows.Scan(&i.Position, &i.DisplayName, &i.Vcard); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

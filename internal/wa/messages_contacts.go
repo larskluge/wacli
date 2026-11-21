@@ -18,6 +18,22 @@ func extractContactText(m *waProto.Message, pm *ParsedMessage) {
 	}
 }
 
+// extractContacts keeps every shared card whole: a ContactMessage is card 0, a
+// ContactsArrayMessage's cards keep their index in the array.
+func extractContacts(m *waProto.Message, pm *ParsedMessage) {
+	if contact := m.GetContactMessage(); contact != nil {
+		pm.Contacts = []Contact{contactCard(contact)}
+		return
+	}
+	for _, contact := range m.GetContactsArrayMessage().GetContacts() {
+		pm.Contacts = append(pm.Contacts, contactCard(contact))
+	}
+}
+
+func contactCard(contact *waProto.ContactMessage) Contact {
+	return Contact{DisplayName: contact.GetDisplayName(), VCard: contact.GetVcard()}
+}
+
 func contactDisplayText(contact *waProto.ContactMessage) string {
 	if contact == nil {
 		return ""

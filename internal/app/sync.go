@@ -598,6 +598,11 @@ func (a *App) storeParsedMessage(ctx context.Context, pm wa.ParsedMessage, optio
 			return err
 		}
 	}
+	if len(pm.Contacts) > 0 {
+		if err := a.db.ReplaceMessageContacts(chatJID, pm.ID, waContactsToStore(pm.Contacts)); err != nil {
+			return err
+		}
+	}
 	if pm.Call != nil {
 		pm.Call.Chat = pm.Chat
 		if pm.Call.SenderJID == "" {
@@ -696,6 +701,15 @@ func (a *App) deleteParsedCallEvents(ctx context.Context, deleted wa.ParsedCallD
 		Direction: deleted.Direction,
 	})
 	return err
+}
+
+// waContactsToStore keeps each card at its index in the message.
+func waContactsToStore(contacts []wa.Contact) []store.MessageContact {
+	out := make([]store.MessageContact, len(contacts))
+	for i, c := range contacts {
+		out[i] = store.MessageContact{Position: i, DisplayName: c.DisplayName, VCard: c.VCard}
+	}
+	return out
 }
 
 func waButtonsToStore(buttons []wa.Button) []store.Button {
