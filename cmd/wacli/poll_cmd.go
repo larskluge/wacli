@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -317,7 +316,7 @@ func primaryPollChatJID(ctx context.Context, a *app.App, jid types.JID) string {
 func pollChatJIDCandidates(ctx context.Context, a *app.App, jid types.JID) []string {
 	jids := make([]types.JID, 0, 3)
 	if a != nil {
-		if _, err := os.Stat(filepath.Join(a.StoreDir(), "session.db")); err == nil {
+		if _, err := os.Stat(a.SessionPath()); err == nil {
 			resolver, _ := a.LocalResolver()
 			if resolver != nil {
 				resolved := resolver.ResolveLIDToPN(ctx, jid)
@@ -568,7 +567,7 @@ func resolveVoterName(a *app.App, ctx context.Context, jid string) string {
 	if a == nil {
 		return ""
 	}
-	if _, err := os.Stat(filepath.Join(a.StoreDir(), "session.db")); err != nil {
+	if _, err := os.Stat(a.SessionPath()); err != nil {
 		return ""
 	}
 	resolver, err := a.LocalResolver()

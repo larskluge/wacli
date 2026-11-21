@@ -17,7 +17,7 @@ Read when: changing command boundaries, storage, synchronization, or protocol ha
 
 ## Storage layout
 
-Each store owns two databases: `session.db` contains whatsmeow-managed identities, keys, and protocol state; `wacli.db` contains wacli's searchable mirror. Keep their schemas and lifecycle separate. Named accounts select isolated stores rather than combining account data in one database.
+Each store owns two databases: `session.db` contains whatsmeow-managed identities, keys, and protocol state; `wacli.db` contains wacli's searchable mirror. Keep their schemas and lifecycle separate. Named accounts select isolated stores rather than combining account data in one database. `--session-dir` or `WACLI_SESSION_DIR` moves `session.db` (and its SQLite sidecars) out of the store into a directory of its own; every other store file stays.
 
 The WhatsApp wrapper owns its session database container. Temporary `Disconnect` calls stop the socket while retaining the container for reconnects; permanent `Close` releases it. Application shutdown disconnects first, drains app-state persistence, and then closes both databases. Failed client initialization also releases any container it opened.
 

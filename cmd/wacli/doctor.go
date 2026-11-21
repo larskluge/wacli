@@ -153,6 +153,10 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			sessionDir, err := resolveSessionDir(flags, storeDir)
+			if err != nil {
+				return err
+			}
 
 			var lockHeld bool
 			var lockInfo string
@@ -207,7 +211,7 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 			var connected bool
 			var linkedJID string
 			if flags.isReadOnly() {
-				if roAuthed, roLinkedJID, err := readOnlyAuthStatus(storeDir); err == nil {
+				if roAuthed, roLinkedJID, err := readOnlyAuthStatus(storeDir, appPkg.SessionPath(sessionDir)); err == nil {
 					authed = roAuthed
 					linkedJID = roLinkedJID
 				}

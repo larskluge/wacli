@@ -9,6 +9,7 @@ Read when: you need the user-facing command map, global flags, store model, or l
 - Default store: `~/.local/state/wacli` on Linux, `~/.wacli` elsewhere.
 - Existing Linux `~/.wacli` stores are reused when no XDG store exists.
 - Override the store with `--store DIR` or `WACLI_STORE_DIR`.
+- Keep `session.db` apart from the store with `--session-dir DIR` or `WACLI_SESSION_DIR`.
 - Human-readable tables are the default.
 - Use `--json` for scriptable output.
 - Libsignal warnings and errors go to stderr, not stdout. With `--events`, they use NDJSON `warning` events with `data.code=libsignal_diagnostic`, the original `level`, `source`, `caller`, and a safe `message`. These diagnostics can precede a successful fallback and do not themselves mean the command failed.

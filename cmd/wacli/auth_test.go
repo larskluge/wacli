@@ -97,7 +97,7 @@ func TestReadOnlyAuthStatusNormalizesDeviceJID(t *testing.T) {
 	}
 	assertNoAuthSQLiteSidecars(t, filepath.Join(storeDir, "session.db"))
 
-	authed, linkedJID, err := readOnlyAuthStatus(storeDir)
+	authed, linkedJID, err := readOnlyAuthStatus(storeDir, filepath.Join(storeDir, "session.db"))
 	if err != nil {
 		t.Fatalf("readOnlyAuthStatus: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestReadOnlyAuthStatusRejectsRevokedSessionMarker(t *testing.T) {
 		t.Fatalf("MarkSessionRevoked: %v", err)
 	}
 
-	authed, linkedJID, err := readOnlyAuthStatus(storeDir)
+	authed, linkedJID, err := readOnlyAuthStatus(storeDir, filepath.Join(storeDir, "session.db"))
 	if err != nil {
 		t.Fatalf("readOnlyAuthStatus: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestReadOnlyAuthStatusReadsLiveWALSidecars(t *testing.T) {
 	}
 	assertAuthSQLiteSidecarsExist(t, filepath.Join(storeDir, "session.db"))
 
-	authed, linkedJID, err := readOnlyAuthStatus(storeDir)
+	authed, linkedJID, err := readOnlyAuthStatus(storeDir, filepath.Join(storeDir, "session.db"))
 	if err != nil {
 		t.Fatalf("readOnlyAuthStatus: %v", err)
 	}
@@ -373,5 +373,35 @@ func TestPhoneFromLinkedJID(t *testing.T) {
 	}
 	if got := phoneFromLinkedJID("not-a-jid"); got != "" {
 		t.Fatalf("phoneFromLinkedJID invalid = %q", got)
+	}
+}
+
+func TestReadOnlyAuthStatusReadsSessionDir(t *testing.T) {
+	storeDir := t.TempDir()
+	sessionPath := filepath.Join(t.TempDir(), "session.db")
+	db, err := sql.Open("sqlite3", sessionPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if _, err := db.Exec(`CREATE TABLE whatsmeow_device (jid TEXT)`); err != nil {
+		t.Fatalf("Create table: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO whatsmeow_device (jid) VALUES (?)`, "15551234567:4@s.whatsapp.net"); err != nil {
+		t.Fatalf("Insert: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	stdout := captureRootStdout(t, func() {
+		if err := execute([]string{"--store", storeDir, "--session-dir", filepath.Dir(sessionPath), "--read-only", "auth", "status"}); err != nil {
+			t.Fatalf("execute auth status: %v", err)
+		}
+	})
+	if !strings.Contains(stdout, "15551234567@s.whatsapp.net") {
+		t.Fatalf("stdout = %q, want the session dir's linked JID", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(storeDir, "session.db")); !os.IsNotExist(err) {
+		t.Fatalf("session.db in store dir stat error = %v, want not exist", err)
 	}
 }

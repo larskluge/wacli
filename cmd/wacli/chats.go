@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -159,7 +158,7 @@ func resolveStoredChats(ctx context.Context, a *app.App, chats []store.Chat) []s
 	if len(chats) == 0 || !chatsNeedLIDResolution(chats) {
 		return chats
 	}
-	if _, err := os.Stat(filepath.Join(a.StoreDir(), "session.db")); err != nil {
+	if _, err := os.Stat(a.SessionPath()); err != nil {
 		return chats
 	}
 	resolver, err := a.LocalResolver()
@@ -285,7 +284,7 @@ func mappedChatJIDs(ctx context.Context, a *app.App, rawJID string) []string {
 		return []string{rawJID}
 	}
 	jids := []types.JID{jid}
-	if _, err := os.Stat(filepath.Join(a.StoreDir(), "session.db")); err != nil {
+	if _, err := os.Stat(a.SessionPath()); err != nil {
 		return jidStrings(jids)
 	}
 	resolver, err := a.LocalResolver()

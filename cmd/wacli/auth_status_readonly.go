@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	appPkg "github.com/openclaw/wacli/internal/app"
@@ -13,7 +12,7 @@ import (
 	"go.mau.fi/whatsmeow/types"
 )
 
-func readOnlyAuthStatus(storeDir string) (bool, string, error) {
+func readOnlyAuthStatus(storeDir, sessionPath string) (bool, string, error) {
 	revoked, err := appPkg.SessionRevoked(storeDir)
 	if err != nil {
 		return false, "", err
@@ -21,7 +20,6 @@ func readOnlyAuthStatus(storeDir string) (bool, string, error) {
 	if revoked {
 		return false, "", nil
 	}
-	sessionPath := filepath.Join(storeDir, "session.db")
 	if _, err := os.Stat(sessionPath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, "", nil

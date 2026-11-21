@@ -258,7 +258,11 @@ func newAuthStatusCmd(flags *rootFlags) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				authed, linkedJID, err := readOnlyAuthStatus(storeDir)
+				sessionDir, err := resolveSessionDir(flags, storeDir)
+				if err != nil {
+					return err
+				}
+				authed, linkedJID, err := readOnlyAuthStatus(storeDir, appPkg.SessionPath(sessionDir))
 				if err != nil {
 					return err
 				}
