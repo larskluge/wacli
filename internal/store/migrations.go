@@ -47,6 +47,7 @@ var schemaMigrations = []migration{
 	{version: 31, name: "content-free message change journal", up: migrateChanges},
 	{version: 32, name: "message receipt retrieval revisions", up: migrateReceiptRetrieval},
 	{version: 33, name: "ordered chat auto-unarchive", up: migrateChatAutoUnarchive},
+	{version: 34, name: "message contacts", up: migrateMessageContacts},
 }
 
 func migratePlaceholderChatActivity(d *DB) error {
@@ -107,6 +108,22 @@ func migrateMessageLocations(d *DB) error {
 		);
 	`); err != nil {
 		return fmt.Errorf("create message_locations table: %w", err)
+	}
+	return nil
+}
+
+func migrateMessageContacts(d *DB) error {
+	if _, err := d.sql.Exec(`
+		CREATE TABLE IF NOT EXISTS message_contacts (
+			chat_jid TEXT NOT NULL,
+			msg_id TEXT NOT NULL,
+			position INTEGER NOT NULL,
+			display_name TEXT,
+			vcard TEXT,
+			PRIMARY KEY (chat_jid, msg_id, position)
+		);
+	`); err != nil {
+		return fmt.Errorf("create message_contacts table: %w", err)
 	}
 	return nil
 }
@@ -504,6 +521,9 @@ func (d *DB) ensureCurrentSchema() error {
 	}
 	if err := migrateMessageLocations(d); err != nil {
 		return fmt.Errorf("ensure current message locations schema: %w", err)
+	}
+	if err := migrateMessageContacts(d); err != nil {
+		return fmt.Errorf("ensure current message contacts schema: %w", err)
 	}
 	if err := migrateUnavailableAppStateKeys(d); err != nil {
 		return fmt.Errorf("ensure unavailable app state keys: %w", err)

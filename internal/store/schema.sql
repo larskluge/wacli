@@ -214,6 +214,15 @@ CREATE TABLE IF NOT EXISTS message_locations (
     PRIMARY KEY (chat_jid, msg_id)
 );
 
+CREATE TABLE IF NOT EXISTS message_contacts (
+    chat_jid TEXT NOT NULL,
+    msg_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    display_name TEXT,
+    vcard TEXT,
+    PRIMARY KEY (chat_jid, msg_id, position)
+);
+
 CREATE TABLE IF NOT EXISTS poll_votes (
     chat_jid TEXT NOT NULL,
     poll_msg_id TEXT NOT NULL,

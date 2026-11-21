@@ -533,3 +533,22 @@ DELETE FROM message_locations WHERE chat_jid = ? AND msg_id = ?;
 
 -- name: DeleteMessageLocationsForChat :exec
 DELETE FROM message_locations WHERE chat_jid = ?;
+
+-- name: InsertMessageContact :exec
+INSERT INTO message_contacts (chat_jid, msg_id, position, display_name, vcard)
+SELECT ?, ?, ?, ?, ?
+WHERE NOT EXISTS (
+    SELECT 1 FROM message_payload_purges p WHERE p.chat_jid = ? AND p.msg_id = ?
+);
+
+-- name: ListMessageContacts :many
+SELECT position, COALESCE(display_name,''), COALESCE(vcard,'')
+FROM message_contacts
+WHERE chat_jid = ? AND msg_id = ?
+ORDER BY position;
+
+-- name: DeleteMessageContacts :exec
+DELETE FROM message_contacts WHERE chat_jid = ? AND msg_id = ?;
+
+-- name: DeleteMessageContactsForChat :exec
+DELETE FROM message_contacts WHERE chat_jid = ?;

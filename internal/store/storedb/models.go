@@ -120,6 +120,14 @@ type Message struct {
 	Buttons            sql.NullString
 }
 
+type MessageContact struct {
+	ChatJid     string
+	MsgID       string
+	Position    int64
+	DisplayName sql.NullString
+	Vcard       sql.NullString
+}
+
 type MessageLocalMediaAlias struct {
 	ChatJid      string
 	MsgID        string
@@ -143,6 +151,14 @@ type MessagePayloadPurge struct {
 	PurgedAt       int64
 	DeletedAt      int64
 	DeletionReason string
+}
+
+type MessageReceipt struct {
+	ChatJid      string
+	MsgID        string
+	RecipientJid string
+	Status       string
+	Ts           int64
 }
 
 type MessagesFt struct {

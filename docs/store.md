@@ -24,6 +24,7 @@ wacli groups prune [--days N] [--left-only=false|--include-active] [--dry-run] [
 - Status broadcasts are persisted separately in `status_messages`; they are not chat rows and are not included in normal chat/message cleanup paths.
 - What recipients report about your own messages is persisted in `message_receipts`, one row per recipient. The rows follow their chat through the SQLite cascade, so `store cleanup` and `chats cleanup` remove them with it.
 - Location pins are persisted in `message_locations`. Coordinates follow the same lifecycle as the rest of a message's local payload: `messages purge` removes them with the retained payload, `store cleanup` and `chats cleanup` remove them with their chat, and a LID-to-phone identity migration moves them with the message rather than leaving them under the old identity.
+- Shared contact cards are persisted in `message_contacts`, one row per card (`position` 0 for a single card, each card of a multi-contact message at its index), with the display name and the vCard exactly as WhatsApp delivered it. They follow the same lifecycle as location pins.
 - `store cleanup` removes chats whose known local activity is older than `--days` and deletes their messages through the SQLite chat/message cascade.
 - `chats cleanup --jid JID` removes one local chat row and its local messages.
 - `groups prune` removes local group metadata plus the matching local chat/messages for pruned group JIDs.

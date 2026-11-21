@@ -33,6 +33,13 @@ type Location struct {
 	IsLive    bool
 }
 
+// Contact is one shared contact card as WhatsApp delivered it: its display
+// name and its vCard, unparsed.
+type Contact struct {
+	DisplayName string
+	VCard       string
+}
+
 type Button struct {
 	Type         string `json:"type"`
 	DisplayText  string `json:"display_text"`
@@ -81,6 +88,7 @@ type ParsedMessage struct {
 	Buttons          []Button
 	Media            *Media
 	Location         *Location
+	Contacts         []Contact
 	Poll             *Poll
 	PollVote         *PollVoteRef
 	PollAdd          *PollAddOptionRef
@@ -248,6 +256,7 @@ func extractWAProto(m *waProto.Message, pm *ParsedMessage) *waProto.Message {
 	extractMedia(m, pm)
 	extractLocation(m, pm)
 	extractContactText(m, pm)
+	extractContacts(m, pm)
 	extractBusinessText(m, pm)
 	extractPoll(m, pm)
 	extractPollAddOption(m, pm)
