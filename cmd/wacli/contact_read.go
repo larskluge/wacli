@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"math"
 	"os"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -105,7 +104,7 @@ func getContactForDisplay(ctx context.Context, a *app.App, rawJID string) (store
 }
 
 func contactReadResolver(a *app.App) (app.LocalResolver, error) {
-	if _, err := os.Stat(filepath.Join(a.StoreDir(), "session.db")); err != nil {
+	if _, err := os.Stat(a.SessionPath()); err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}

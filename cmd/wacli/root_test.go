@@ -158,3 +158,52 @@ func isolateAccountConfigHome(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", filepath.Join(home, ".local", "state"))
 	t.Setenv(config.EnvStoreDir, "")
 }
+
+func TestResolveSessionDirDefaultsToStoreDir(t *testing.T) {
+	t.Setenv(config.EnvSessionDir, "")
+	storeDir := t.TempDir()
+	got, err := resolveSessionDir(&rootFlags{}, storeDir)
+	if err != nil {
+		t.Fatalf("resolveSessionDir: %v", err)
+	}
+	if got != storeDir {
+		t.Fatalf("sessionDir = %q, want the store dir %q", got, storeDir)
+	}
+}
+
+func TestResolveSessionDirEnv(t *testing.T) {
+	envDir := filepath.Join(t.TempDir(), "env-session")
+	t.Setenv(config.EnvSessionDir, envDir)
+	got, err := resolveSessionDir(&rootFlags{}, t.TempDir())
+	if err != nil {
+		t.Fatalf("resolveSessionDir: %v", err)
+	}
+	if got != envDir {
+		t.Fatalf("sessionDir = %q, want %q", got, envDir)
+	}
+}
+
+func TestResolveSessionDirFlagBeatsEnv(t *testing.T) {
+	t.Setenv(config.EnvSessionDir, filepath.Join(t.TempDir(), "env-session"))
+	flagDir := filepath.Join(t.TempDir(), "flag-session")
+	got, err := resolveSessionDir(&rootFlags{sessionDir: flagDir}, t.TempDir())
+	if err != nil {
+		t.Fatalf("resolveSessionDir: %v", err)
+	}
+	if got != flagDir {
+		t.Fatalf("sessionDir = %q, want %q", got, flagDir)
+	}
+}
+
+func TestResolveSessionDirAccountConflict(t *testing.T) {
+	t.Setenv(config.EnvSessionDir, "")
+	_, err := resolveSessionDir(&rootFlags{sessionDir: "/tmp/wacli-session", account: "work"}, "/tmp/wacli")
+	if err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+		t.Fatalf("resolveSessionDir error = %v, want conflict", err)
+	}
+	t.Setenv(config.EnvSessionDir, "/tmp/wacli-session")
+	_, err = resolveSessionDir(&rootFlags{account: "work"}, "/tmp/wacli")
+	if err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+		t.Fatalf("resolveSessionDir env error = %v, want conflict", err)
+	}
+}

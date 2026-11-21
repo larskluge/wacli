@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/openclaw/wacli/internal/app"
@@ -29,7 +28,7 @@ func messageChatJIDFilter(ctx context.Context, a *app.App, chat string) ([]strin
 		return nil, err
 	}
 	jids := []types.JID{canonicalMessageFilterJID(jid)}
-	if _, err := os.Stat(filepath.Join(a.StoreDir(), "session.db")); err != nil {
+	if _, err := os.Stat(a.SessionPath()); err != nil {
 		return jidStrings(jids), nil
 	}
 	resolver, err := a.LocalResolver()
@@ -81,7 +80,7 @@ func resolveMessageSenderNamesInView(ctx context.Context, a *app.App, db *store.
 	if len(msgs) == 0 || !messagesNeedSenderResolution(msgs) {
 		return msgs
 	}
-	if _, err := os.Stat(filepath.Join(a.StoreDir(), "session.db")); err != nil {
+	if _, err := os.Stat(a.SessionPath()); err != nil {
 		return msgs
 	}
 	resolver, err := a.LocalResolver()

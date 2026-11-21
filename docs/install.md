@@ -86,6 +86,7 @@ The local store format is forward-compatible across point releases; routine upgr
 - Default store directory: `~/.local/state/wacli` on Linux (XDG state dir), `~/.wacli` on macOS / Windows. Existing Linux `~/.wacli` directories keep working.
 - Override with `--store DIR` or `WACLI_STORE_DIR`.
 - The store contains `session.db` (whatsmeow keys), `wacli.db` (messages + FTS), `media/`, and a `LOCK` file. See [Spec](spec.md#storage-layout) for the layout.
+- `--session-dir DIR` or `WACLI_SESSION_DIR` puts `session.db` in a directory of its own; everything else stays in the store. It cannot be combined with `--account`.
 - Permissions are owner-only (`0700` on the directory, `0600` on files). Do not relax these — they protect your WhatsApp session keys.
 
 ## Related pages

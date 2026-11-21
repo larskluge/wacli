@@ -43,6 +43,7 @@ const docsURL = "https://wacli.sh"
 
 type rootFlags struct {
 	storeDir   string
+	sessionDir string
 	account    string
 	asJSON     bool
 	fullOutput bool
@@ -69,6 +70,7 @@ func execute(args []string) error {
 	rootCmd.SetVersionTemplate("wacli {{.Version}}\n")
 
 	rootCmd.PersistentFlags().StringVar(&flags.storeDir, "store", "", "store directory (default: $WACLI_STORE_DIR, XDG state dir on Linux, or ~/.wacli)")
+	rootCmd.PersistentFlags().StringVar(&flags.sessionDir, "session-dir", "", "directory of session.db, the WhatsApp device session (default: $WACLI_SESSION_DIR, or the store directory)")
 	rootCmd.PersistentFlags().StringVar(&flags.account, "account", "", "named account from config.yaml")
 	rootCmd.PersistentFlags().BoolVar(&flags.asJSON, "json", false, "output JSON instead of human-readable text")
 	rootCmd.PersistentFlags().BoolVar(&flags.fullOutput, "full", false, "disable truncation in table output")
@@ -122,6 +124,10 @@ func newApp(ctx context.Context, flags *rootFlags, needLock bool, allowUnauthed 
 	if err != nil {
 		return nil, nil, err
 	}
+	sessionDir, err := resolveSessionDir(flags, storeDir)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	var lk *lock.Lock
 	if needLock {
@@ -133,6 +139,7 @@ func newApp(ctx context.Context, flags *rootFlags, needLock bool, allowUnauthed 
 
 	a, err := app.New(app.Options{
 		StoreDir:      storeDir,
+		SessionDir:    sessionDir,
 		Version:       effectiveVersion(),
 		JSON:          flags.asJSON,
 		Events:        out.NewEventWriter(os.Stderr, flags.events),
@@ -186,6 +193,28 @@ func resolveStoreDir(flags *rootFlags) (string, error) {
 	}
 	storeDir, _ = filepath.Abs(storeDir)
 	return storeDir, nil
+}
+
+// resolveSessionDir returns the directory of session.db: --session-dir, else
+// $WACLI_SESSION_DIR, else the store directory. A named account keeps its
+// session in its own store, so neither override combines with --account.
+func resolveSessionDir(flags *rootFlags, storeDir string) (string, error) {
+	sessionDir := ""
+	account := ""
+	if flags != nil {
+		sessionDir = flags.sessionDir
+		account = strings.TrimSpace(flags.account)
+	}
+	if sessionDir == "" {
+		sessionDir = os.Getenv(config.EnvSessionDir)
+	}
+	if sessionDir == "" {
+		return storeDir, nil
+	}
+	if account != "" {
+		return "", fmt.Errorf("--session-dir (or $%s) and --account cannot be combined", config.EnvSessionDir)
+	}
+	return filepath.Abs(sessionDir)
 }
 
 func (f *rootFlags) isReadOnly() bool {

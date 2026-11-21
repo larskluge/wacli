@@ -326,3 +326,73 @@ func assertNoAppSQLiteSidecars(t *testing.T, path string) {
 		}
 	}
 }
+
+func TestOpenWAPutsSessionInSessionDir(t *testing.T) {
+	storeDir := t.TempDir()
+	sessionDir := filepath.Join(t.TempDir(), "session")
+	a, err := New(Options{StoreDir: storeDir, SessionDir: sessionDir})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer a.Close()
+
+	if err := a.OpenWA(); err != nil {
+		t.Fatalf("OpenWA: %v", err)
+	}
+	if got, want := a.SessionPath(), filepath.Join(sessionDir, "session.db"); got != want {
+		t.Fatalf("SessionPath = %q, want %q", got, want)
+	}
+	if _, err := os.Stat(filepath.Join(sessionDir, "session.db")); err != nil {
+		t.Fatalf("session.db in session dir: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(storeDir, "session.db")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("session.db in store dir stat err = %v, want not exist", err)
+	}
+	if _, err := os.Stat(filepath.Join(storeDir, "wacli.db")); err != nil {
+		t.Fatalf("wacli.db in store dir: %v", err)
+	}
+}
+
+func TestSessionPathDefaultsToStoreDir(t *testing.T) {
+	storeDir := t.TempDir()
+	a, err := New(Options{StoreDir: storeDir})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer a.Close()
+	if got, want := a.SessionPath(), filepath.Join(storeDir, "session.db"); got != want {
+		t.Fatalf("SessionPath = %q, want %q", got, want)
+	}
+}
+
+func TestReadOnlyLocalResolverReadsSessionDir(t *testing.T) {
+	storeDir := t.TempDir()
+	sessionDir := t.TempDir()
+	writer, err := New(Options{StoreDir: storeDir, SessionDir: sessionDir})
+	if err != nil {
+		t.Fatalf("New writer: %v", err)
+	}
+	writer.Close()
+
+	sessionPath := filepath.Join(sessionDir, "session.db")
+	writeSessionLIDMap(t, sessionPath, "999123456789", "15551234567")
+
+	reader, err := New(Options{StoreDir: storeDir, SessionDir: sessionDir, ReadOnly: true})
+	if err != nil {
+		t.Fatalf("New read-only: %v", err)
+	}
+	defer reader.Close()
+
+	resolver, err := reader.LocalResolver()
+	if err != nil {
+		t.Fatalf("LocalResolver: %v", err)
+	}
+	pn := types.JID{User: "15551234567", Server: types.DefaultUserServer}
+	lid := types.JID{User: "999123456789", Server: types.HiddenUserServer}
+	if got := resolver.ResolvePNToLID(context.Background(), pn); got != lid {
+		t.Fatalf("ResolvePNToLID = %s, want %s", got, lid)
+	}
+	if _, err := os.Stat(filepath.Join(storeDir, "session.db")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("session.db in store dir stat err = %v, want not exist", err)
+	}
+}

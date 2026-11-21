@@ -50,6 +50,8 @@ The store contains two SQLite databases:
 
 Companion tools should not read or write `session.db` unless they are explicitly working on WhatsApp session internals. Never write to `wacli.db` from a companion tool.
 
+To give a companion tool `wacli.db` without the session, keep `session.db` in a directory of its own with `--session-dir DIR` or `WACLI_SESSION_DIR` (on every wacli invocation for that store, `sync --follow` included) and share only the store directory. The store then holds `wacli.db`, `media/`, `LOCK`, `HEARTBEAT`, `SESSION_REVOKED` and the follow process's delegate socket.
+
 For multi-account tools, iterate configured accounts explicitly and annotate derived rows with the account name in the companion tool's own database. Do not merge account data into `wacli.db`.
 
 ## Read-only SQLite

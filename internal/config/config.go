@@ -20,6 +20,12 @@ import (
 // every invocation.
 const EnvStoreDir = "WACLI_STORE_DIR"
 
+// EnvSessionDir is the environment variable that puts session.db, whatsmeow's
+// device session and keys, in a directory of its own instead of the store
+// directory. A deployment can then hand a reader the store (wacli.db) without
+// the session that acts as the linked device.
+const EnvSessionDir = "WACLI_SESSION_DIR"
+
 const ConfigFileName = "config.yaml"
 
 var accountNameRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)

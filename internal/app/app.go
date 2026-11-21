@@ -114,6 +114,7 @@ type WAClient interface {
 
 type Options struct {
 	StoreDir      string
+	SessionDir    string // holds session.db; empty means StoreDir
 	Version       string
 	JSON          bool
 	Events        *out.EventWriter
@@ -169,6 +170,9 @@ func New(opts Options) (*App, error) {
 	if opts.StoreDir == "" {
 		return nil, fmt.Errorf("store dir is required")
 	}
+	if opts.SessionDir == "" {
+		opts.SessionDir = opts.StoreDir
+	}
 
 	indexPath := filepath.Join(opts.StoreDir, "wacli.db")
 
@@ -181,6 +185,9 @@ func New(opts Options) (*App, error) {
 	} else {
 		if err := fsutil.EnsurePrivateDir(opts.StoreDir); err != nil {
 			return nil, fmt.Errorf("create store dir: %w", err)
+		}
+		if err := fsutil.EnsurePrivateDir(opts.SessionDir); err != nil {
+			return nil, fmt.Errorf("create session dir: %w", err)
 		}
 		db, err = store.Open(indexPath)
 	}
@@ -203,8 +210,7 @@ func (a *App) OpenWA() error {
 		return fmt.Errorf("read-only mode: command would open the WhatsApp session store")
 	}
 	if a.wa == nil {
-		sessionPath := filepath.Join(a.opts.StoreDir, "session.db")
-		cli, err := wa.New(wa.Options{StorePath: sessionPath, KeyStateStore: a.db})
+		cli, err := wa.New(wa.Options{StorePath: a.SessionPath(), KeyStateStore: a.db})
 		if err != nil {
 			return err
 		}
@@ -299,7 +305,7 @@ func (a *App) ReadOnlyResolver() (LocalResolver, error) {
 	if a.sessionResolver != nil {
 		return a.sessionResolver, nil
 	}
-	resolver, err := openReadOnlySessionResolver(filepath.Join(a.opts.StoreDir, "session.db"))
+	resolver, err := openReadOnlySessionResolver(a.SessionPath())
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +317,13 @@ func (a *App) DB() *store.DB { return a.db }
 func (a *App) Events() *out.EventWriter {
 	return a.opts.Events
 }
-func (a *App) StoreDir() string    { return a.opts.StoreDir }
+func (a *App) StoreDir() string { return a.opts.StoreDir }
+
+// SessionPath is session.db, whatsmeow's device session, in sessionDir.
+func SessionPath(sessionDir string) string { return filepath.Join(sessionDir, "session.db") }
+
+// SessionPath is this app's session.db, in Options.SessionDir.
+func (a *App) SessionPath() string { return SessionPath(a.opts.SessionDir) }
 func (a *App) Version() string     { return a.opts.Version }
 func (a *App) AllowUnauthed() bool { return a.opts.AllowUnauthed }
 func (a *App) ReadOnly() bool      { return a.opts.ReadOnly }
