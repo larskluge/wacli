@@ -207,3 +207,52 @@ func TestResolveSessionDirAccountConflict(t *testing.T) {
 		t.Fatalf("resolveSessionDir env error = %v, want conflict", err)
 	}
 }
+
+func TestResolveSocketDirDefaultsToStoreDir(t *testing.T) {
+	t.Setenv(config.EnvSocketDir, "")
+	storeDir := t.TempDir()
+	got, err := resolveSocketDir(&rootFlags{}, storeDir)
+	if err != nil {
+		t.Fatalf("resolveSocketDir: %v", err)
+	}
+	if got != storeDir {
+		t.Fatalf("socketDir = %q, want the store dir %q", got, storeDir)
+	}
+}
+
+func TestResolveSocketDirEnv(t *testing.T) {
+	envDir := filepath.Join(t.TempDir(), "env-socket")
+	t.Setenv(config.EnvSocketDir, envDir)
+	got, err := resolveSocketDir(&rootFlags{}, t.TempDir())
+	if err != nil {
+		t.Fatalf("resolveSocketDir: %v", err)
+	}
+	if got != envDir {
+		t.Fatalf("socketDir = %q, want %q", got, envDir)
+	}
+}
+
+func TestResolveSocketDirFlagBeatsEnv(t *testing.T) {
+	t.Setenv(config.EnvSocketDir, filepath.Join(t.TempDir(), "env-socket"))
+	flagDir := filepath.Join(t.TempDir(), "flag-socket")
+	got, err := resolveSocketDir(&rootFlags{socketDir: flagDir}, t.TempDir())
+	if err != nil {
+		t.Fatalf("resolveSocketDir: %v", err)
+	}
+	if got != flagDir {
+		t.Fatalf("socketDir = %q, want %q", got, flagDir)
+	}
+}
+
+func TestResolveSocketDirAccountConflict(t *testing.T) {
+	t.Setenv(config.EnvSocketDir, "")
+	_, err := resolveSocketDir(&rootFlags{socketDir: "/tmp/wacli-ipc", account: "work"}, "/tmp/wacli")
+	if err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+		t.Fatalf("resolveSocketDir error = %v, want conflict", err)
+	}
+	t.Setenv(config.EnvSocketDir, "/tmp/wacli-ipc")
+	_, err = resolveSocketDir(&rootFlags{account: "work"}, "/tmp/wacli")
+	if err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+		t.Fatalf("resolveSocketDir env error = %v, want conflict", err)
+	}
+}

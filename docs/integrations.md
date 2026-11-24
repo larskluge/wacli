@@ -52,6 +52,8 @@ Companion tools should not read or write `session.db` unless they are explicitly
 
 To give a companion tool `wacli.db` without the session, keep `session.db` in a directory of its own with `--session-dir DIR` or `WACLI_SESSION_DIR` (on every wacli invocation for that store, `sync --follow` included) and share only the store directory. The store then holds `wacli.db`, `media/`, `LOCK`, `HEARTBEAT`, `SESSION_REVOKED` and the follow process's delegate socket.
 
+The delegate socket, `.send.sock`, sends, reacts and deletes chats as the account for whoever can connect to it, so a reader of the store should not reach it either: `--socket-dir DIR` or `WACLI_SOCKET_DIR` puts it in a directory of its own (again on every invocation for that store, `sync --follow` included). A tool that sends through the follow process then gets only that directory.
+
 For multi-account tools, iterate configured accounts explicitly and annotate derived rows with the account name in the companion tool's own database. Do not merge account data into `wacli.db`.
 
 ## Read-only SQLite

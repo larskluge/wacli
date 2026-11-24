@@ -26,6 +26,12 @@ const EnvStoreDir = "WACLI_STORE_DIR"
 // the session that acts as the linked device.
 const EnvSessionDir = "WACLI_SESSION_DIR"
 
+// EnvSocketDir is the environment variable that puts .send.sock, the follow
+// process's delegate socket, in a directory of its own instead of the store
+// directory. A deployment can then hand a reader the store (wacli.db) without
+// the socket that sends as the linked device.
+const EnvSocketDir = "WACLI_SOCKET_DIR"
+
 const ConfigFileName = "config.yaml"
 
 var accountNameRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)

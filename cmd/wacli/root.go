@@ -44,6 +44,7 @@ const docsURL = "https://wacli.sh"
 type rootFlags struct {
 	storeDir   string
 	sessionDir string
+	socketDir  string
 	account    string
 	asJSON     bool
 	fullOutput bool
@@ -71,6 +72,7 @@ func execute(args []string) error {
 
 	rootCmd.PersistentFlags().StringVar(&flags.storeDir, "store", "", "store directory (default: $WACLI_STORE_DIR, XDG state dir on Linux, or ~/.wacli)")
 	rootCmd.PersistentFlags().StringVar(&flags.sessionDir, "session-dir", "", "directory of session.db, the WhatsApp device session (default: $WACLI_SESSION_DIR, or the store directory)")
+	rootCmd.PersistentFlags().StringVar(&flags.socketDir, "socket-dir", "", "directory of .send.sock, the follow process's delegate socket (default: $WACLI_SOCKET_DIR, or the store directory)")
 	rootCmd.PersistentFlags().StringVar(&flags.account, "account", "", "named account from config.yaml")
 	rootCmd.PersistentFlags().BoolVar(&flags.asJSON, "json", false, "output JSON instead of human-readable text")
 	rootCmd.PersistentFlags().BoolVar(&flags.fullOutput, "full", false, "disable truncation in table output")
@@ -128,6 +130,10 @@ func newApp(ctx context.Context, flags *rootFlags, needLock bool, allowUnauthed 
 	if err != nil {
 		return nil, nil, err
 	}
+	socketDir, err := resolveSocketDir(flags, storeDir)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	var lk *lock.Lock
 	if needLock {
@@ -140,6 +146,7 @@ func newApp(ctx context.Context, flags *rootFlags, needLock bool, allowUnauthed 
 	a, err := app.New(app.Options{
 		StoreDir:      storeDir,
 		SessionDir:    sessionDir,
+		SocketDir:     socketDir,
 		Version:       effectiveVersion(),
 		JSON:          flags.asJSON,
 		Events:        out.NewEventWriter(os.Stderr, flags.events),
@@ -215,6 +222,30 @@ func resolveSessionDir(flags *rootFlags, storeDir string) (string, error) {
 		return "", fmt.Errorf("--session-dir (or $%s) and --account cannot be combined", config.EnvSessionDir)
 	}
 	return filepath.Abs(sessionDir)
+}
+
+// resolveSocketDir returns the directory of .send.sock, the follow process's
+// delegate socket: --socket-dir, else $WACLI_SOCKET_DIR, else the store
+// directory. The follow process listens there and every other invocation dials
+// there, so both must be given the same directory. A named account keeps its
+// socket in its own store, so neither override combines with --account.
+func resolveSocketDir(flags *rootFlags, storeDir string) (string, error) {
+	socketDir := ""
+	account := ""
+	if flags != nil {
+		socketDir = flags.socketDir
+		account = strings.TrimSpace(flags.account)
+	}
+	if socketDir == "" {
+		socketDir = os.Getenv(config.EnvSocketDir)
+	}
+	if socketDir == "" {
+		return storeDir, nil
+	}
+	if account != "" {
+		return "", fmt.Errorf("--socket-dir (or $%s) and --account cannot be combined", config.EnvSocketDir)
+	}
+	return filepath.Abs(socketDir)
 }
 
 func (f *rootFlags) isReadOnly() bool {

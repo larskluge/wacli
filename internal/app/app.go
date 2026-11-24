@@ -115,6 +115,7 @@ type WAClient interface {
 type Options struct {
 	StoreDir      string
 	SessionDir    string // holds session.db; empty means StoreDir
+	SocketDir     string // holds .send.sock, the follow delegate socket; empty means StoreDir
 	Version       string
 	JSON          bool
 	Events        *out.EventWriter
@@ -173,6 +174,9 @@ func New(opts Options) (*App, error) {
 	if opts.SessionDir == "" {
 		opts.SessionDir = opts.StoreDir
 	}
+	if opts.SocketDir == "" {
+		opts.SocketDir = opts.StoreDir
+	}
 
 	indexPath := filepath.Join(opts.StoreDir, "wacli.db")
 
@@ -188,6 +192,9 @@ func New(opts Options) (*App, error) {
 		}
 		if err := fsutil.EnsurePrivateDir(opts.SessionDir); err != nil {
 			return nil, fmt.Errorf("create session dir: %w", err)
+		}
+		if err := fsutil.EnsurePrivateDir(opts.SocketDir); err != nil {
+			return nil, fmt.Errorf("create socket dir: %w", err)
 		}
 		db, err = store.Open(indexPath)
 	}
@@ -318,6 +325,9 @@ func (a *App) Events() *out.EventWriter {
 	return a.opts.Events
 }
 func (a *App) StoreDir() string { return a.opts.StoreDir }
+
+// SocketDir holds .send.sock, the follow process's delegate socket.
+func (a *App) SocketDir() string { return a.opts.SocketDir }
 
 // SessionPath is session.db, whatsmeow's device session, in sessionDir.
 func SessionPath(sessionDir string) string { return filepath.Join(sessionDir, "session.db") }

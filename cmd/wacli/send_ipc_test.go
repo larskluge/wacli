@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/openclaw/wacli/internal/app"
+	"github.com/openclaw/wacli/internal/config"
 	"github.com/openclaw/wacli/internal/lock"
 	"github.com/openclaw/wacli/internal/store"
 	"go.mau.fi/whatsmeow/types"
@@ -992,5 +993,57 @@ func TestDelegatedChatStateHonorsAbsoluteCallerDeadline(t *testing.T) {
 	case <-executed:
 		t.Fatal("chat state ran after its caller's deadline")
 	default:
+	}
+}
+
+// With a socket dir, the follow daemon listens in it and not in the store, and
+// a client given the same dir (flag or environment) dials it there. A client
+// that looks in the store finds no socket and falls back as for a down daemon.
+func TestSendDelegateSocketDirHoldsTheSocketForDaemonAndClient(t *testing.T) {
+	skipPresenceDelegateSocketTestOnUnsupportedOS(t)
+	t.Setenv(config.EnvSocketDir, "")
+	storeDir := shortPresenceDelegateStoreDir(t)
+	socketDir := filepath.Join(shortPresenceDelegateStoreDir(t), "ipc")
+
+	a, err := app.New(app.Options{StoreDir: storeDir, SocketDir: socketDir})
+	if err != nil {
+		t.Fatalf("app.New: %v", err)
+	}
+	defer a.Close()
+	stop, err := startSendDelegateServer(context.Background(), a, sendSpacing{})
+	if err != nil {
+		t.Fatalf("start delegate server: %v", err)
+	}
+	defer stop()
+
+	info, err := os.Lstat(filepath.Join(socketDir, ".send.sock"))
+	if err != nil {
+		t.Fatalf("stat socket in socket dir: %v", err)
+	}
+	if info.Mode()&os.ModeSocket == 0 || info.Mode().Perm() != 0o600 {
+		t.Fatalf("delegate socket mode = %v, want socket 0600", info.Mode())
+	}
+	if _, err := os.Lstat(filepath.Join(storeDir, ".send.sock")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("socket in the store dir: %v, want none", err)
+	}
+
+	// An unknown kind reaches the daemon's executor, which refuses it before
+	// any WhatsApp use: the answer proves the client dialled the daemon.
+	probe := sendDelegateRequest{Kind: "socket-dir-probe"}
+	_, err = delegateSend(context.Background(), &rootFlags{storeDir: storeDir, socketDir: socketDir, timeout: time.Second}, probe)
+	if err == nil || errors.Is(err, errSendDelegateUnavailable) || !strings.Contains(err.Error(), `unsupported send kind "socket-dir-probe"`) {
+		t.Fatalf("flag client error = %v, want the daemon's refusal", err)
+	}
+
+	t.Setenv(config.EnvSocketDir, socketDir)
+	_, err = delegateSend(context.Background(), &rootFlags{storeDir: storeDir, timeout: time.Second}, probe)
+	if err == nil || errors.Is(err, errSendDelegateUnavailable) || !strings.Contains(err.Error(), `unsupported send kind "socket-dir-probe"`) {
+		t.Fatalf("env client error = %v, want the daemon's refusal", err)
+	}
+
+	t.Setenv(config.EnvSocketDir, "")
+	_, err = delegateSend(context.Background(), &rootFlags{storeDir: storeDir, timeout: time.Second}, probe)
+	if !errors.Is(err, errSendDelegateUnavailable) {
+		t.Fatalf("store-dir client error = %v, want %v", err, errSendDelegateUnavailable)
 	}
 }

@@ -12,17 +12,19 @@ import (
 	"path/filepath"
 )
 
-func socketPath(storeDir string) string {
-	return filepath.Join(storeDir, ".send.sock")
+// socketPath is .send.sock in dir: the store directory, or the socket
+// directory a deployment keeps apart from it (--socket-dir).
+func socketPath(dir string) string {
+	return filepath.Join(dir, ".send.sock")
 }
 
-func Dial(ctx context.Context, storeDir string) (net.Conn, error) {
+func Dial(ctx context.Context, dir string) (net.Conn, error) {
 	var d net.Dialer
-	return d.DialContext(ctx, "unix", socketPath(storeDir))
+	return d.DialContext(ctx, "unix", socketPath(dir))
 }
 
-func Listen(storeDir string) (net.Listener, error) {
-	path := socketPath(storeDir)
+func Listen(dir string) (net.Listener, error) {
+	path := socketPath(dir)
 	info, err := os.Lstat(path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
