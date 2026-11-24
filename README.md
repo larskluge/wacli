@@ -93,7 +93,7 @@ The complete documentation is at [wacli.sh](https://wacli.sh), or run `wacli hel
 
 ## Configuration
 
-The default store is `~/.local/state/wacli` on Linux and `~/.wacli` elsewhere. Override it with `--store DIR` or `WACLI_STORE_DIR`. `--session-dir DIR` or `WACLI_SESSION_DIR` keeps `session.db`, the linked device's keys, in a directory of its own, so a reader of `wacli.db` can be given the store without the session. Use named accounts when each WhatsApp identity needs its own session, database, and lock.
+The default store is `~/.local/state/wacli` on Linux and `~/.wacli` elsewhere. Override it with `--store DIR` or `WACLI_STORE_DIR`. `--session-dir DIR` or `WACLI_SESSION_DIR` keeps `session.db`, the linked device's keys, in a directory of its own, so a reader of `wacli.db` can be given the store without the session. `--socket-dir DIR` or `WACLI_SOCKET_DIR` does the same for `.send.sock`, the `sync --follow` process's delegate socket, through which any process that can connect to it sends as the account. Use named accounts when each WhatsApp identity needs its own session, database, and lock.
 
 ```sh
 wacli accounts add work

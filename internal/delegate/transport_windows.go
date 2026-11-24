@@ -12,8 +12,10 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func pipePath(storeDir string) (string, error) {
-	path, err := filepath.Abs(storeDir)
+// pipePath names the pipe after dir: the store directory, or the socket
+// directory a deployment keeps apart from it (--socket-dir).
+func pipePath(dir string) (string, error) {
+	path, err := filepath.Abs(dir)
 	if err != nil {
 		return "", err
 	}
@@ -24,16 +26,16 @@ func pipePath(storeDir string) (string, error) {
 	return fmt.Sprintf(`\\.\pipe\wacli-send-%x`, sha256.Sum256([]byte(strings.ToLower(path)))), nil
 }
 
-func Dial(ctx context.Context, storeDir string) (net.Conn, error) {
-	path, err := pipePath(storeDir)
+func Dial(ctx context.Context, dir string) (net.Conn, error) {
+	path, err := pipePath(dir)
 	if err != nil {
 		return nil, err
 	}
 	return winio.DialPipeContext(ctx, path)
 }
 
-func Listen(storeDir string) (net.Listener, error) {
-	path, err := pipePath(storeDir)
+func Listen(dir string) (net.Listener, error) {
+	path, err := pipePath(dir)
 	if err != nil {
 		return nil, err
 	}

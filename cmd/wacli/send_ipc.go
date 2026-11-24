@@ -127,7 +127,11 @@ func delegateSend(ctx context.Context, flags *rootFlags, req sendDelegateRequest
 	if err != nil {
 		return sendDelegateResponse{}, err
 	}
-	conn, err := delegate.Dial(ctx, storeDir)
+	socketDir, err := resolveSocketDir(flags, storeDir)
+	if err != nil {
+		return sendDelegateResponse{}, err
+	}
+	conn, err := delegate.Dial(ctx, socketDir)
 	if err != nil {
 		return sendDelegateResponse{}, fmt.Errorf("%w: %v", errSendDelegateUnavailable, err)
 	}
@@ -187,13 +191,15 @@ func tryDelegateSend(ctx context.Context, flags *rootFlags, lockErr error, req s
 }
 
 func startSendDelegateServer(ctx context.Context, a *app.App, spacing sendSpacing) (func(), error) {
-	return startSendDelegateServerForStore(ctx, a.StoreDir(), spacing, func(ctx context.Context, req sendDelegateRequest) (sendDelegateResponse, error) {
+	return startSendDelegateServerForStore(ctx, a.SocketDir(), spacing, func(ctx context.Context, req sendDelegateRequest) (sendDelegateResponse, error) {
 		return executeDelegatedSend(ctx, a, req)
 	})
 }
 
-func startSendDelegateServerForStore(ctx context.Context, storeDir string, spacing sendSpacing, execute sendDelegateExecutor) (func(), error) {
-	ln, err := delegate.Listen(storeDir)
+// startSendDelegateServerForStore listens on the delegate socket in socketDir:
+// the store directory unless --socket-dir or $WACLI_SOCKET_DIR names another.
+func startSendDelegateServerForStore(ctx context.Context, socketDir string, spacing sendSpacing, execute sendDelegateExecutor) (func(), error) {
+	ln, err := delegate.Listen(socketDir)
 	if err != nil {
 		return nil, err
 	}

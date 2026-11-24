@@ -87,6 +87,7 @@ The local store format is forward-compatible across point releases; routine upgr
 - Override with `--store DIR` or `WACLI_STORE_DIR`.
 - The store contains `session.db` (whatsmeow keys), `wacli.db` (messages + FTS), `media/`, and a `LOCK` file. See [Spec](spec.md#storage-layout) for the layout.
 - `--session-dir DIR` or `WACLI_SESSION_DIR` puts `session.db` in a directory of its own; everything else stays in the store. It cannot be combined with `--account`.
+- `--socket-dir DIR` or `WACLI_SOCKET_DIR` puts `.send.sock`, the `sync --follow` delegate socket, in a directory of its own. The follow process and every command that delegates to it must be given the same directory. It cannot be combined with `--account`.
 - Permissions are owner-only (`0700` on the directory, `0600` on files). Do not relax these — they protect your WhatsApp session keys.
 
 ## Related pages
