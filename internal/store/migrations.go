@@ -48,6 +48,7 @@ var schemaMigrations = []migration{
 	{version: 32, name: "message receipt retrieval revisions", up: migrateReceiptRetrieval},
 	{version: 33, name: "ordered chat auto-unarchive", up: migrateChatAutoUnarchive},
 	{version: 34, name: "message contacts", up: migrateMessageContacts},
+	{version: 35, name: "chats deleted_at column", up: migrateChatDeletedAt},
 }
 
 func migratePlaceholderChatActivity(d *DB) error {

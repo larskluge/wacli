@@ -248,3 +248,7 @@ const DeletedForMeMessageDisplayText = "This message was deleted for me"
 const MessageDeletionReasonWhatsAppRevoke = "whatsapp-revoke"
 const MessageDeletionReasonWhatsAppDeleteForMe = "whatsapp-delete-for-me"
 const MessageDeletionReasonExplicit = "explicit-message-delete"
+
+// A chat deleted or cleared on another device of this account (ApplyChatDeletion).
+const MessageDeletionReasonChatDeleted = "chat_deleted"
+const MessageDeletionReasonChatCleared = "chat_cleared"

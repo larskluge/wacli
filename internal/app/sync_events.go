@@ -109,7 +109,7 @@ func (a *App) addSyncEventHandler(ctx context.Context, opts SyncOptions, message
 			*events.CallOfferNotice, *events.CallRelayLatency, *events.CallTerminate, *events.CallReject:
 			lastEvent.Store(nowUTC().UnixNano())
 			a.handleLiveCallEvent(ctx, v)
-		case *events.AppState, *events.Star, *events.DeleteForMe,
+		case *events.AppState, *events.Star, *events.DeleteForMe, *events.DeleteChat, *events.ClearChat,
 			*events.Archive, *events.UnarchiveChatsSetting, *events.Pin, *events.Mute, *events.MarkChatAsRead,
 			*events.Contact:
 			lastEvent.Store(nowUTC().UnixNano())
@@ -404,6 +404,8 @@ func (a *App) persistAppStateEvent(ctx context.Context, evt any, tracker *appSta
 		err = a.handleStarEvent(ctx, v)
 	case *events.DeleteForMe:
 		err = a.handleDeleteForMeEvent(ctx, v)
+	case *events.DeleteChat, *events.ClearChat:
+		err = a.handleChatDeletionEvent(ctx, v)
 	case *events.Archive, *events.UnarchiveChatsSetting, *events.Pin, *events.Mute, *events.MarkChatAsRead:
 		err = a.handleChatStateEvent(ctx, v)
 	case *events.Contact:
@@ -422,7 +424,7 @@ func appStateCollectionsForEvent(evt any) []appstate.WAPatchName {
 	switch v := evt.(type) {
 	case *events.Archive, *events.UnarchiveChatsSetting, *events.Pin, *events.MarkChatAsRead:
 		return []appstate.WAPatchName{appstate.WAPatchRegularLow}
-	case *events.Mute, *events.Star, *events.DeleteForMe:
+	case *events.Mute, *events.Star, *events.DeleteForMe, *events.DeleteChat, *events.ClearChat:
 		return []appstate.WAPatchName{appstate.WAPatchRegularHigh}
 	case *events.Contact:
 		return []appstate.WAPatchName{appstate.WAPatchCriticalUnblockLow}

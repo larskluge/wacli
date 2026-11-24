@@ -43,7 +43,7 @@ func (a *App) AddChatStatePersistenceHandler(ctx context.Context) (func(), error
 	waClient := a.WA()
 	handlerID := waClient.AddEventHandler(func(evt any) {
 		switch v := evt.(type) {
-		case *events.AppState, *events.Star, *events.DeleteForMe,
+		case *events.AppState, *events.Star, *events.DeleteForMe, *events.DeleteChat, *events.ClearChat,
 			*events.Archive, *events.UnarchiveChatsSetting, *events.Pin, *events.Mute, *events.MarkChatAsRead,
 			*events.Contact:
 			a.handleAppStatePersistenceEvent(ctx, evt, nil)
