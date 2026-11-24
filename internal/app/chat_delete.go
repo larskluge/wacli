@@ -44,8 +44,9 @@ type ChatDeleted struct {
 // DeleteChat deletes a one-to-one chat for this account through the given
 // time. It names the newest stored message at or before that time as the last
 // message, so anything after it stays, and refuses when the store holds a
-// message later than the time: the caller has not seen it. The local store
-// keeps the chat, as it does when the chat is deleted on the phone.
+// message later than the time: the caller has not seen it. It writes nothing
+// to the store itself: WhatsApp hands the sent patch back as a DeleteChat
+// event, recorded like a delete made on the phone (handleChatDeletionEvent).
 func (a *App) DeleteChat(ctx context.Context, jid types.JID, through time.Time) (ChatDeleted, error) {
 	// Normalize before classifying: IsBot recognizes a legacy bot number on the
 	// phone-number server, such as Meta AI's, only without a device part.

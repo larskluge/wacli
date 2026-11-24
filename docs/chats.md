@@ -56,10 +56,16 @@ wacli chats cleanup [--days N] [--jid JID] [--dry-run] [--confirm]
 - `--through` is an RFC 3339 time, such as `2026-10-22T09:30:00Z`. The delete names the newest stored message at or before it (reactions aside) as the chat's last message, so WhatsApp keeps every message after that one. Stored times are whole seconds, so a message in `--through`'s second counts as at or before it. With no stored message at or before it, the delete reaches through `--through` itself.
 - It is refused with `newer_messages` when `wacli.db` holds a message later than `--through`, anybody's, your own from the phone included: whoever chose the time has not seen it. Reactions and content-free `(message)` system rows do not count. Nothing is sent.
 - It is refused with `not_found` when `wacli.db` holds no row for the chat under its phone-number or LID form. That says what this store knows, not that WhatsApp has no such chat.
-- The local store keeps the chat and its messages, as it does when a chat is deleted on the phone, and sync emits no event for the delete.
+- The command itself changes nothing in `wacli.db`. WhatsApp hands the sent delete back as an app-state event, which the store records like a delete made on the phone (below).
 - Through a same-store `sync --follow` process the command is delegated as the `delete_chat` kind and runs outside the send queue, like the other app-state writes.
 - With `--json`, success prints wacli's usual envelope on stdout, the result under `data`: `{"success":true,"data":{"ok":true,"action":"delete","code":"deleted","chat":JID,"last_message_id":ID,"deleted_through":TIME},"error":null}`, `last_message_id` left out when no message was named. A refusal fails the command with an error that begins with its code; with `--json` it is the error envelope on stderr, such as `{"success":false,"data":null,"error":"newer_messages: …"}`.
 - A program that talks to the delegate socket itself gets the raw delegate response instead, one JSON object with no envelope and no `action`: `{"ok":true,"code":"deleted","chat":JID,"last_message_id":ID,"deleted_through":TIME}` on success, `{"ok":false,"code":"newer_messages","error":"newer_messages: …"}` on a refusal (`code` is absent when the delete failed for any other reason).
+
+A chat deleted or cleared on the phone or another linked device reaches the store as WhatsApp's `deleteChat` or `clearChat` app-state action, live or caught up by sync:
+
+- Every stored message of the chat at or before the action's message range end (its last message's time, else the action's own time) gets `deleted_at`, the action's time, and `deletion_reason` `chat_deleted` or `chat_cleared`, under the chat's phone-number and LID forms alike. A message already deleted keeps its own deletion, and a later one stays, as it does on the phone.
+- A deleted chat also gets `chats.deleted_at`, the action's time, unless the store already holds a message later than that: a full app-state sync hands over old deletes too. A cleared chat keeps its row as it was.
+- A message later than `chats.deleted_at` stored in that chat clears it again: the chat is back on the phone. Reactions, content-free `(message)` system rows and deleted rows do not count.
 
 ## Read receipts
 

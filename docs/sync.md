@@ -44,7 +44,7 @@ wacli sync [--once] [--follow] [--idle-exit 30s] [--max-reconnect 5m] [--stale-t
   - `chats mark-read`, `chats mark-unread`, `chats archive`, `chats unarchive`, `chats pin`, `chats unpin`, `chats mute`, `chats unmute`, and `chats delete`.
   - `contacts check` and `contacts save`.
 - Restart `sync --follow` after upgrading to enable newly supported commands such as `send status`; an older process rejects unsupported requests without sending.
-- After connecting, sync fetches WhatsApp chat app-state deltas (`regular_high` and `regular_low`) so starred, delete-for-me, mute, archive, pin, and mark-read changes made while `wacli` was offline are caught up instead of relying only on live push notifications.
+- After connecting, sync fetches WhatsApp chat app-state deltas (`regular_high` and `regular_low`) so starred, delete-for-me, chat delete and clear, mute, archive, pin, and mark-read changes made while `wacli` was offline are caught up instead of relying only on live push notifications.
 - Sync also retains WhatsApp's **Keep chats archived** preference and orders automatic unarchives against archive actions. Upgraded stores recover missing preferences and archive timestamps through a full `regular_low` replay or phone recovery snapshot; until those are known, archived chats stay archived.
 - Sync imports messages sent from your other linked devices into the destination chat with `from_me=true`, so local history covers both incoming and outgoing conversation sides.
 - Sync decrypts encrypted message edits and updates the original local row only when the authenticated sender, chat, and target message match. Malformed, redirected, or unsupported edits are rejected without changing local history or emitting a message webhook.
