@@ -445,6 +445,43 @@ func TestSendVoiceDelegatesVoiceMetadataThroughSendSocketWhenStoreLocked(t *test
 	}
 }
 
+// A sync process drops request fields it does not know instead of refusing
+// them, at the same protocol version. That is how a process from before
+// `seconds` and `waveform` treats them, and why docs/send.md says to restart
+// it after upgrading.
+func TestSendDelegateDropsRequestFieldsItDoesNotKnow(t *testing.T) {
+	if sendDelegateVersion != 1 {
+		t.Fatalf("sendDelegateVersion = %d; docs/send.md says the voice fields kept version 1", sendDelegateVersion)
+	}
+	serverConn, clientConn := net.Pipe()
+	defer clientConn.Close()
+	if err := clientConn.SetDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("set client deadline: %v", err)
+	}
+	sendSlot := make(chan struct{}, 1)
+	sendSlot <- struct{}{}
+	executed := make(chan sendDelegateRequest, 1)
+	go handleSendDelegateConn(context.Background(), serverConn, func(_ context.Context, req sendDelegateRequest) (sendDelegateResponse, error) {
+		executed <- req
+		return sendDelegateResponse{OK: true, Sent: true, To: req.To, ID: "sent-id"}, nil
+	}, sendSlot, newSendPacer(sendSpacing{}))
+
+	raw := `{"version":1,"kind":"voice","to":"123@s.whatsapp.net","file":"/tmp/voice.ogg","seconds":24,"field_from_a_later_version":[1,2]}` + "\n"
+	if _, err := clientConn.Write([]byte(raw)); err != nil {
+		t.Fatalf("write request: %v", err)
+	}
+	var resp sendDelegateResponse
+	if err := json.NewDecoder(clientConn).Decode(&resp); err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	if !resp.OK || resp.ID != "sent-id" {
+		t.Fatalf("response = %+v, want the send to go ahead", resp)
+	}
+	if got := <-executed; got.Kind != "voice" || got.Seconds == nil || *got.Seconds != 24 {
+		t.Fatalf("executed %+v, want the voice request with its known fields", got)
+	}
+}
+
 func TestExecuteDelegatedSendAcceptsEditKind(t *testing.T) {
 	// Reaching app use proves the daemon dispatcher recognized the edit kind.
 	defer func() { _ = recover() }()
