@@ -15,6 +15,7 @@ import (
 	"github.com/openclaw/wacli/internal/delegate"
 	"github.com/openclaw/wacli/internal/lock"
 	"github.com/openclaw/wacli/internal/out"
+	"github.com/openclaw/wacli/internal/store"
 	"github.com/openclaw/wacli/internal/wa"
 	"go.mau.fi/whatsmeow/types"
 )
@@ -669,7 +670,17 @@ func delegatedSendFileOptions(req sendDelegateRequest) (sendFileOptions, error) 
 	}, nil
 }
 
-func executeDelegatedFile(ctx context.Context, a *app.App, req sendDelegateRequest) (sendDelegateResponse, error) {
+// delegatedFileApp is what a delegated file or voice send needs of the sync
+// process's app.
+type delegatedFileApp interface {
+	DB() *store.DB
+	WA() app.WAClient
+	StoreDir() string
+	Events() *out.EventWriter
+	Connect(context.Context, bool, func(string)) error
+}
+
+func executeDelegatedFile(ctx context.Context, a delegatedFileApp, req sendDelegateRequest) (sendDelegateResponse, error) {
 	opts, err := delegatedSendFileOptions(req)
 	if err != nil {
 		return sendDelegateResponse{}, err
@@ -696,8 +707,9 @@ func executeDelegatedFile(ctx context.Context, a *app.App, req sendDelegateReque
 	if err != nil {
 		return sendDelegateResponse{}, err
 	}
-	// The daemon's own log says it too: a socket client may not.
-	warnVoiceNoteMetadata(os.Stderr, res.VoiceWarning)
+	// The sync process says it too, since a socket client may not, without
+	// breaking its NDJSON event stream.
+	warnDelegatedVoiceNoteMetadata(a.Events(), os.Stderr, res.VoiceWarning)
 	waitForPostSendRetryReceipts(ctx, millisDuration(req.PostSendWaitMS, 0))
 	return res, nil
 }
@@ -819,7 +831,7 @@ func writeDelegatedSendOutput(flags *rootFlags, kind string, resp sendDelegateRe
 	return nil
 }
 
-func warmupDelegatedRecipient(ctx context.Context, a *app.App, jid types.JID) types.JID {
+func warmupDelegatedRecipient(ctx context.Context, a interface{ WA() app.WAClient }, jid types.JID) types.JID {
 	return warmupRecipient(ctx, a.WA(), jid, os.Stderr)
 }
 

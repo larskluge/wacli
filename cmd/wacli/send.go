@@ -520,6 +520,24 @@ func warnVoiceNoteMetadata(w io.Writer, msg string) {
 	fmt.Fprintf(w, "warning: %s\n", out.SanitizeHuman(msg))
 }
 
+// voiceNoteMetadataWarningCode is the code of the warning event a sync
+// process with --events emits for a delegated voice note sent without a part.
+const voiceNoteMetadataWarningCode = "voice_note_metadata_not_measured"
+
+// warnDelegatedVoiceNoteMetadata reports in the sync process what a delegated
+// voice note went without: as a warning event when the process emits events,
+// so its stderr stays one JSON object per line, else as the human line.
+func warnDelegatedVoiceNoteMetadata(events *out.EventWriter, w io.Writer, msg string) {
+	if msg == "" {
+		return
+	}
+	if events.Enabled() {
+		_ = events.Emit("warning", map[string]any{"code": voiceNoteMetadataWarningCode, "message": msg})
+		return
+	}
+	warnVoiceNoteMetadata(w, msg)
+}
+
 func decodeMessageEscapes(s string) (string, error) {
 	var b strings.Builder
 	b.Grow(len(s))

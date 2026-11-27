@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/openclaw/wacli/internal/app"
+	"github.com/openclaw/wacli/internal/out"
 	"github.com/openclaw/wacli/internal/store"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -371,6 +373,84 @@ func TestDelegatedVoiceNoteWithCallerMetadataNeedsNoFFmpeg(t *testing.T) {
 	audio := a.wa.(*fakeSendFileWA).sent.GetAudioMessage()
 	if audio == nil || !audio.GetPTT() || audio.GetSeconds() != 24 || len(audio.GetWaveform()) != voiceWaveformSamples {
 		t.Fatalf("sent %v, want a voice note with the caller's seconds and waveform", audio)
+	}
+}
+
+// delegatedVoiceWA is the voice fixture's WhatsApp plus the recipient warmup a
+// delegated send runs before it sends.
+type delegatedVoiceWA struct{ *fakeSendFileWA }
+
+func (delegatedVoiceWA) GetUserInfo(context.Context, []types.JID) (map[types.JID]types.UserInfo, error) {
+	return nil, nil
+}
+
+func (delegatedVoiceWA) IsOnWhatsApp(context.Context, []string) ([]types.IsOnWhatsAppResponse, error) {
+	return nil, nil
+}
+
+// delegatedVoiceApp is a sync process's app with a real store and event
+// stream and a fake WhatsApp.
+type delegatedVoiceApp struct {
+	*app.App
+	client delegatedVoiceWA
+}
+
+func (a *delegatedVoiceApp) WA() app.WAClient                                  { return a.client }
+func (a *delegatedVoiceApp) Connect(context.Context, bool, func(string)) error { return nil }
+
+func TestDelegatedVoiceNoteWarningKeepsSyncEventsNDJSON(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("PATH without probes is set up for Unix")
+	}
+	// Neither ffprobe nor ffmpeg: both probes fail.
+	t.Setenv("PATH", t.TempDir())
+	const warning = "voice note length not measured: ffprobe is not installed; voice note waveform not measured: ffmpeg is not installed"
+	for _, events := range []bool{true, false} {
+		t.Run(fmt.Sprintf("events=%v", events), func(t *testing.T) {
+			var stream bytes.Buffer
+			base, err := app.New(app.Options{StoreDir: t.TempDir(), AllowUnauthed: true, Events: out.NewEventWriter(&stream, events)})
+			if err != nil {
+				t.Fatalf("new app: %v", err)
+			}
+			t.Cleanup(base.Close)
+			a := &delegatedVoiceApp{App: base, client: delegatedVoiceWA{&fakeSendFileWA{sentID: "MSG1"}}}
+			filePath := filepath.Join(t.TempDir(), "note.ogg")
+			if err := os.WriteFile(filePath, []byte("OggS stand-in"), 0o600); err != nil {
+				t.Fatalf("write voice note: %v", err)
+			}
+			req := sendDelegateRequest{Version: sendDelegateVersion, Kind: "voice", To: "15550000001@s.whatsapp.net", File: filePath, MIME: "audio/ogg; codecs=opus"}
+
+			var resp sendDelegateResponse
+			stderr := captureRootStderr(t, func() {
+				resp, err = executeDelegatedFile(context.Background(), a, req)
+			})
+			if err != nil {
+				t.Fatalf("executeDelegatedFile: %v", err)
+			}
+			if resp.VoiceWarning != warning {
+				t.Fatalf("voice_warning = %q, want %q for the sender", resp.VoiceWarning, warning)
+			}
+			if !events {
+				if stream.Len() != 0 || stderr != "warning: "+warning+"\n" {
+					t.Fatalf("events %q, stderr %q; want the human warning line alone", stream.String(), stderr)
+				}
+				return
+			}
+			if stderr != "" {
+				t.Fatalf("stderr = %q, want nothing beside the NDJSON event stream", stderr)
+			}
+			lines := strings.Split(strings.TrimSuffix(stream.String(), "\n"), "\n")
+			var event struct {
+				Event string         `json:"event"`
+				Data  map[string]any `json:"data"`
+			}
+			if len(lines) != 1 || json.Unmarshal([]byte(lines[0]), &event) != nil {
+				t.Fatalf("event stream %q, want one JSON object line", stream.String())
+			}
+			if event.Event != "warning" || event.Data["code"] != voiceNoteMetadataWarningCode || event.Data["message"] != warning {
+				t.Fatalf("event = %+v, want a %s warning carrying the voice warning", event, voiceNoteMetadataWarningCode)
+			}
+		})
 	}
 }
 
