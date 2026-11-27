@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -251,11 +252,15 @@ func TestChatsDeleteDelegatesThroughProductionServerWhenStoreLocked(t *testing.T
 	case <-contextWithTestTimeout(t).Done():
 		t.Fatal("timed out waiting for the delegated delete")
 	}
-	for _, want := range []string{`"ok":true`, `"action":"delete"`, `"code":"deleted"`, `"chat":"15550001010@s.whatsapp.net"`, `"last_message_id":"3EB0AAAA0000000000001"`, `"deleted_through":"2026-03-04T09:59:12Z"`} {
-		if !strings.Contains(stdout, want) {
-			t.Fatalf("stdout %q missing %s", stdout, want)
-		}
-	}
+	// The envelope docs/chats.md shows, not the raw delegate response.
+	assertJSONLine(t, "stdout", stdout, map[string]any{
+		"success": true,
+		"data": map[string]any{
+			"ok": true, "action": "delete", "code": "deleted", "chat": "15550001010@s.whatsapp.net",
+			"last_message_id": "3EB0AAAA0000000000001", "deleted_through": "2026-03-04T09:59:12Z",
+		},
+		"error": nil,
+	})
 
 	fake.err = &app.ChatDeleteRefusal{Code: app.ChatDeleteNewerMessages, Reason: "2 stored message(s) are later"}
 	stdout, stderr, err = runPresenceDelegateHelper(t, args)
@@ -263,8 +268,23 @@ func TestChatsDeleteDelegatesThroughProductionServerWhenStoreLocked(t *testing.T
 		t.Fatalf("refused delete succeeded: stdout=%q", stdout)
 	}
 	<-fake.calls
-	if !strings.Contains(stderr, "newer_messages: 2 stored message(s) are later") {
-		t.Fatalf("stderr %q does not carry the refusal", stderr)
+	assertJSONLine(t, "stderr", stderr, map[string]any{
+		"success": false, "data": nil, "error": "newer_messages: 2 stored message(s) are later",
+	})
+}
+
+// assertJSONLine decodes output's first line, the command's own (a helper
+// process that succeeds adds go test's PASS after it), as one JSON object and
+// compares it with want, key for key.
+func assertJSONLine(t *testing.T, name, output string, want map[string]any) {
+	t.Helper()
+	line, _, _ := strings.Cut(output, "\n")
+	var got map[string]any
+	if err := json.Unmarshal([]byte(line), &got); err != nil {
+		t.Fatalf("%s %q does not begin with a JSON object line: %v", name, output, err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("%s = %s, want %v", name, output, want)
 	}
 }
 

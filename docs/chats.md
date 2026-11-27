@@ -57,7 +57,9 @@ wacli chats cleanup [--days N] [--jid JID] [--dry-run] [--confirm]
 - It is refused with `newer_messages` when `wacli.db` holds a message later than `--through`, anybody's, your own from the phone included: whoever chose the time has not seen it. Reactions and content-free `(message)` system rows do not count. Nothing is sent.
 - It is refused with `not_found` when `wacli.db` holds no row for the chat under its phone-number or LID form. That says what this store knows, not that WhatsApp has no such chat.
 - The local store keeps the chat and its messages, as it does when a chat is deleted on the phone, and sync emits no event for the delete.
-- Through a same-store `sync --follow` process the command is delegated as the `delete_chat` kind and runs outside the send queue, like the other app-state writes. JSON output on success is `{"ok":true,"action":"delete","code":"deleted","chat":JID,"last_message_id":ID,"deleted_through":TIME}`, `last_message_id` left out when no message was named; a refusal fails the command with an error that begins with its code.
+- Through a same-store `sync --follow` process the command is delegated as the `delete_chat` kind and runs outside the send queue, like the other app-state writes.
+- With `--json`, success prints wacli's usual envelope on stdout, the result under `data`: `{"success":true,"data":{"ok":true,"action":"delete","code":"deleted","chat":JID,"last_message_id":ID,"deleted_through":TIME},"error":null}`, `last_message_id` left out when no message was named. A refusal fails the command with an error that begins with its code; with `--json` it is the error envelope on stderr, such as `{"success":false,"data":null,"error":"newer_messages: …"}`.
+- A program that talks to the delegate socket itself gets the raw delegate response instead, one JSON object with no envelope and no `action`: `{"ok":true,"code":"deleted","chat":JID,"last_message_id":ID,"deleted_through":TIME}` on success, `{"ok":false,"code":"newer_messages","error":"newer_messages: …"}` on a refusal (`code` is absent when the delete failed for any other reason).
 
 ## Read receipts
 
