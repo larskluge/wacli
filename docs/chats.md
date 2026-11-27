@@ -52,7 +52,7 @@ wacli chats cleanup [--days N] [--jid JID] [--dry-run] [--confirm]
 
 `wacli chats delete --chat JID --through TIME` deletes a one-to-one chat from WhatsApp for your account, on every linked device, the way WhatsApp's own **Delete chat** does. It never deletes for the other person, and media already saved on the phone stays.
 
-- `--chat` takes a JID (`@s.whatsapp.net` or `@lid`) or a phone number, never a name: a fuzzy match must not pick the chat a delete reaches. Groups, broadcast lists, status, channels, and bots are refused with `not_one_to_one`.
+- `--chat` takes a JID (`@s.whatsapp.net` or `@lid`) or a phone number, never a name: a fuzzy match must not pick the chat a delete reaches. Groups, broadcast lists, status, channels, and bots (`@bot` addresses and legacy bot numbers on `@s.whatsapp.net`, such as Meta AI's) are refused with `not_one_to_one` before any app-state sync or recovery starts.
 - `--through` is an RFC 3339 time, such as `2026-10-22T09:30:00Z`. The delete names the newest stored message at or before it (reactions aside) as the chat's last message, so WhatsApp keeps every message after that one. Stored times are whole seconds, so a message in `--through`'s second counts as at or before it. With no stored message at or before it, the delete reaches through `--through` itself.
 - It is refused with `newer_messages` when `wacli.db` holds a message later than `--through`, anybody's, your own from the phone included: whoever chose the time has not seen it. Reactions and content-free `(message)` system rows do not count. Nothing is sent.
 - It is refused with `not_found` when `wacli.db` holds no row for the chat under its phone-number or LID form. That says what this store knows, not that WhatsApp has no such chat.

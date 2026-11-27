@@ -47,13 +47,15 @@ type ChatDeleted struct {
 // message later than the time: the caller has not seen it. The local store
 // keeps the chat, as it does when the chat is deleted on the phone.
 func (a *App) DeleteChat(ctx context.Context, jid types.JID, through time.Time) (ChatDeleted, error) {
-	if jid.Server != types.DefaultUserServer && jid.Server != types.HiddenUserServer {
+	// Normalize before classifying: IsBot recognizes a legacy bot number on the
+	// phone-number server, such as Meta AI's, only without a device part.
+	jid = jid.ToNonAD()
+	if (jid.Server != types.DefaultUserServer && jid.Server != types.HiddenUserServer) || jid.IsBot() {
 		return ChatDeleted{}, &ChatDeleteRefusal{Code: ChatDeleteNotOneToOne, Reason: fmt.Sprintf("%s is not a one-to-one chat; only those can be deleted", jid)}
 	}
 	if through.IsZero() {
 		return ChatDeleted{}, fmt.Errorf("a chat delete needs the time it reaches through")
 	}
-	jid = jid.ToNonAD()
 
 	release, err := a.beginChatStateWrite(ctx, appstate.WAPatchRegularHigh)
 	if err != nil {

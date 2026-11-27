@@ -118,10 +118,15 @@ func TestDeleteChatRefusesEveryChatButAOneToOne(t *testing.T) {
 		"broadcast":  {User: "1700000000", Server: types.BroadcastServer},
 		"newsletter": {User: "120363000000000002", Server: types.NewsletterServer},
 		"bot":        {User: "13135550002", Server: types.BotServer},
+		// A legacy bot number sits on the phone-number server: only the SDK's
+		// bot classifier tells it from a person, with a device part or without.
+		"legacy bot":        types.MetaAIJID,
+		"legacy bot device": {User: types.MetaAIJID.User, Device: 2, Server: types.DefaultUserServer},
 	} {
 		t.Run(name, func(t *testing.T) {
 			a, f := deleteChatTestApp(t)
-			if err := a.db.UpsertChat(chat.String(), "group", "Sailing club", time.Now()); err != nil {
+			// Stored, so that only the refusal stops the delete.
+			if err := a.db.UpsertChat(chat.ToNonAD().String(), "group", "Sailing club", time.Now()); err != nil {
 				t.Fatalf("UpsertChat: %v", err)
 			}
 			_, err := a.DeleteChat(context.Background(), chat, time.Now())
